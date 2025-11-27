@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>京阪神之旅 - 行動儀表板</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom Japanese Minimalist Theme */
+        :root {
+            --color-primary: #5d5d5d; /* Deep Grey/Charcoal */
+            --color-accent: #f4b360; /* Warm Accent (Ginger) */
+            --color-bg: #f9f7f4; /* Subtle Off-White/Rice Paper */
+            --color-card-bg: #ffffff;
+            --color-wood: #c0a880; /* Light Wood Tone */
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--color-bg);
+            color: var(--color-primary);
+            min-height: 100vh;
+        }
+        .tab-button.active {
+            border-bottom: 3px solid var(--color-accent);
+            font-weight: 600;
+            color: var(--color-primary);
+        }
+        .card-shadow {
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+        }
+        /* Custom Highlight Colors */
+        .highlight-food { background-color: #fce3a2; color: #724b00; padding: 2px 6px; border-radius: 4px; font-weight: 700; display: inline-block; margin-right: 4px; }
+        .highlight-buy { background-color: #b7e3f4; color: #004d70; padding: 2px 6px; border-radius: 4px; font-weight: 700; display: inline-block; margin-right: 4px; }
+        .highlight-reserve { background-color: #f7a8a8; color: #7e0000; padding: 2px 6px; border-radius: 4px; font-weight: 700; display: inline-block; margin-right: 4px; }
+    </style>
+</head>
+<body class="p-0 sm:p-4">
+
+    <div id="app" class="max-w-xl mx-auto bg-white min-h-screen card-shadow rounded-lg">
+        <!-- Header -->
+        <header class="sticky top-0 bg-white z-10 p-4 border-b border-gray-100">
+            <h1 class="text-2xl font-bold text-center" style="color: var(--color-primary);">京阪神 | 6日旅行儀表板</h1>
+        </header>
+
+        <!-- Tabs -->
+        <nav class="flex justify-around border-b border-gray-200" id="tabs">
+            <button class="tab-button py-3 px-4 text-sm w-1/2" onclick="showTab('itinerary')" data-tab="itinerary">行程概覽</button>
+            <button class="tab-button py-3 px-4 text-sm w-1/2" onclick="showTab('tools')" data-tab="tools">實用工具</button>
+        </nav>
+
+        <!-- Content Area -->
+        <main class="p-4">
+            <!-- 1. 行程概覽 (Itinerary Tab) -->
+            <div id="itinerary" class="tab-content space-y-6">
+                <!-- Daily Itinerary will be dynamically inserted here -->
+                <div id="itinerary-list" class="space-y-6"></div>
+            </div>
+
+            <!-- 2. 實用工具 (Tools Tab) -->
+            <div id="tools" class="tab-content space-y-6 hidden">
+                <h2 class="text-xl font-semibold mb-3">旅行資料中心</h2>
+                
+                <!-- 航班資訊 -->
+                <div class="p-4 bg-gray-50 rounded-lg border border-gray-100">
+                    <h3 class="font-bold text-lg mb-2 text-blue-700">✈️ 航班資訊</h3>
+                    <p class="text-sm">去程 (12/20): 桃園機場 (TPE) -> 關西機場 (KIX)</p>
+                    <p class="text-sm">回程 (12/25): 關西機場 (KIX) 14:00 起飛 -> 桃園機場 (TPE)</p>
+                    <p class="text-sm font-semibold mt-2">重要提醒：回程需在 12:00 前抵達 KIX 辦理登機。</p>
+                </div>
+
+                <!-- 住宿資訊 -->
+                <div class="p-4 bg-gray-50 rounded-lg border border-gray-100">
+                    <h3 class="font-bold text-lg mb-2 text-green-700">🏨 住宿資訊</h3>
+                    <ul class="text-sm space-y-1">
+                        <li>**12/20 (神戶):** 神戶西廣場飯店 (Seishin-Chuo)</li>
+                        <li>**12/21 (京都):** 京都世紀飯店 (Kyoto Station)</li>
+                        <li>**12/22 (天橋立):** 天橋立萬楓酒店 (Fairfield by Marriott)</li>
+                        <li>**12/23-24 (大阪):** 東方快捷飯店 - 大阪心齋橋</li>
+                    </ul>
+                </div>
+
+                <!-- 緊急聯絡電話 -->
+                <div class="p-4 bg-red-50 rounded-lg border border-red-100">
+                    <h3 class="font-bold text-lg mb-2 text-red-700">🚨 緊急聯絡電話</h3>
+                    <ul class="text-sm space-y-1">
+                        <li>**警察 (Police):** 110</li>
+                        <li>**救護車/消防 (Ambulance/Fire):** 119</li>
+                        <li>**台灣駐日緊急聯絡:** +81-(0)-80-6007-8895</li>
+                    </ul>
+                </div>
+
+                <!-- 記帳/預算表 -->
+                <div class="p-4 bg-yellow-50 rounded-lg border border-yellow-100">
+                    <h3 class="font-bold text-lg mb-2 text-yellow-700">💰 每日記帳/預算表</h3>
+                    <div class="flex space-x-2 mb-3">
+                        <input type="number" id="expense-amount" placeholder="金額 (日圓)" class="p-2 border rounded w-1/3 text-sm">
+                        <input type="text" id="expense-desc" placeholder="項目說明 (例: 晚餐)" class="p-2 border rounded w-1/3 text-sm flex-grow">
+                        <button onclick="addExpense()" class="bg-yellow-600 hover:bg-yellow-700 text-white p-2 rounded text-sm transition">新增</button>
+                    </div>
+                    <div class="text-sm font-semibold mb-2">
+                        總支出：<span id="total-expense" class="text-xl text-yellow-700">0</span> 日圓
+                    </div>
+                    <ul id="expense-list" class="text-sm space-y-1 h-32 overflow-y-auto border-t pt-2">
+                        <!-- Expenses will be listed here -->
+                        <li class="text-gray-500">尚無支出記錄...</li>
+                    </ul>
+                </div>
+
+                <p class="text-xs text-center text-gray-400 mt-4">註: 本記帳功能僅在本裝置有效，不會雲端同步。</p>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // Global Variables for API and Configuration
+        const API_KEY = ""; // Leave as is for Canvas environment
+        const API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=";
+        
+        // --- DATA STRUCTURE: ITINERARY ---
+        const ITINERARY_DATA = [
+            {
+                day: 1,
+                date: "12/20 (五)",
+                city: "神戶 (Kobe)",
+                theme: "抵達與港灣之夜",
+                events: [
+                    { type: 'transport', time: '下午', title: '關西機場 (KIX) 抵達', detail: '購買 ICOCA 卡，領取高速船票。', navTarget: 'Kansai International Airport' },
+                    { type: 'transport', time: '下午', title: '高速船 + Port Liner', detail: '搭乘 Bay Shuttle 至神戶機場，轉乘 Port Liner 至三宮。', navTarget: 'Kobe Airport' },
+                    { type: 'accommodation', time: '傍晚', title: '飯店入住', detail: '三宮轉乘地鐵至西神中央站，入住神戶西廣場飯店。', navTarget: '神戶西廣場飯店' },
+                    { type: 'attraction', time: '晚上', title: '神戶港灣樂園夜景', detail: '欣賞浪漫夜景、遠觀神戶塔，並參觀 Umie 聖誕市集。', navTarget: 'Kobe Harborland' },
+                    { type: 'food', time: '晚餐', title: '神戶牛或海鮮', detail: '在 Harborland 周邊或神戶站附近享用晚餐。', navTarget: 'Kobe Station' }
+                ]
+            },
+            {
+                day: 2,
+                date: "12/21 (六)",
+                city: "京都 (Kyoto)",
+                theme: "JR 啟用與千本鳥居",
+                events: [
+                    { type: 'transport', time: '上午', title: '神戶 -> 京都', detail: '從西神中央站搭地鐵至三宮，轉乘 JR 列車至京都車站。**JR 廣域周遊券今日啟用！**', navTarget: 'Kyoto Station' },
+                    { type: 'accommodation', time: '中午', title: '京都世紀飯店寄放行李', detail: '飯店就在京都車站旁，非常方便。', navTarget: '京都世紀飯店' },
+                    { type: 'attraction', time: '下午', title: '伏見稻荷大社', detail: '搭乘 JR 奈良線至稻荷站，參觀著名的千本鳥居。', navTarget: '伏見稻荷大社' },
+                    { type: 'food', time: '晚餐', title: '京都車站周邊拉麵/美食', detail: '可在京都拉麵小路或伊勢丹百貨內用餐。', navTarget: 'Kyoto Station' }
+                ]
+            },
+            {
+                day: 3,
+                date: "12/22 (日)",
+                city: "天橋立 (Amanohashidate)",
+                theme: "日本三景與飛龍觀",
+                events: [
+                    { type: 'transport', time: '上午', title: '京都 -> 天橋立', detail: 'JR 特急「橋立號」直達天橋立車站。', navTarget: 'Amanohashidate Station' },
+                    { type: 'accommodation', time: '中午', title: '天橋立萬楓酒店入住', detail: '辦理入住，並在車站服務中心購買天橋立周遊券。', navTarget: '天橋立萬楓酒店' },
+                    { type: 'attraction', time: '下午', title: '傘松公園觀景台', detail: '搭乘纜車/吊椅上山，體驗「股見」（從胯下倒著看），欣賞飛龍觀。', navTarget: '傘松公園' },
+                    { type: 'food', time: '晚餐', title: '當地海鮮料理', detail: '在飯店或周邊餐廳享用當地新鮮海產。', navTarget: 'Amanohashidate' }
+                ]
+            },
+            {
+                day: 4,
+                date: "12/23 (一)",
+                city: "大阪 (Osaka)",
+                theme: "舟屋、天守閣與道頓堀",
+                events: [
+                    { type: 'attraction', time: '上午', title: '伊根舟屋 (可選)', detail: '若時間充裕，可使用天橋立周遊券前往伊根欣賞海上漁村風光。', navTarget: '伊根舟屋' },
+                    { type: 'transport', time: '中午', title: '天橋立 -> 大阪', detail: 'JR 列車經京都轉車至大阪，前往心齋橋。', navTarget: '東方快捷飯店 - 大阪心齋橋' },
+                    { type: 'accommodation', time: '下午', title: '東方快捷飯店入住', detail: '飯店Check-in，**大阪週遊卡 (1日券) 今日啟用！**', navTarget: '東方快捷飯店 - 大阪心齋橋' },
+                    { type: 'attraction', time: '下午', title: '大阪城天守閣', detail: '使用週遊卡免費入場。感受豐臣秀吉的歷史。', navTarget: '大阪城天守閣' },
+                    { type: 'food', time: '晚上', title: '道頓堀/心齋橋美食', detail: '品嚐章魚燒、大阪燒、金龍拉麵等經典大阪小吃。', navTarget: 'Dotonbori' }
+                ]
+            },
+            {
+                day: 5,
+                date: "12/24 (二)",
+                city: "大阪 (Osaka)",
+                theme: "免費景點與梅田夜景",
+                events: [
+                    { type: 'transport', time: '全日', title: '大阪市區地鐵/巴士', detail: '**大阪週遊卡 (2日券) 今日啟用！** 無限次搭乘地鐵。', navTarget: 'Osaka Metro' },
+                    { type: 'attraction', time: '白天', title: '大阪免費景點或購物', detail: '可選參觀大阪生活今昔館、通天閣（週遊卡免費）。', navTarget: '大阪生活今昔館' },
+                    { type: 'food', time: '傍晚', title: '梅田百貨晚餐', detail: '在梅田地區找一家有聖誕氛圍的餐廳。', navTarget: 'Umeda' },
+                    { type: 'attraction', time: '晚上', title: '梅田藍天大廈空中庭園', detail: '使用週遊卡免費登上，欣賞大阪壯觀的聖誕夜景。', navTarget: '梅田藍天大廈空中庭園' }
+                ]
+            },
+            {
+                day: 6,
+                date: "12/25 (三)",
+                city: "大阪 -> 桃園",
+                theme: "最終採購與返程",
+                events: [
+                    { type: 'food', time: '上午', title: '最終美食/採購', detail: '選擇 法善寺橫丁 或 **黑門市場**（必吃海鮮早餐）進行最後的遊覽與採購。', navTarget: '黑門市場' },
+                    { type: 'transport', time: '10:30', title: '退房並前往難波', detail: '從心齋橋飯店出發前往南海難波站或 JR 大阪站。', navTarget: 'Nankai Namba Station' },
+                    { type: 'transport', time: '11:00', title: '大阪 -> 關西機場 (KIX)', detail: '使用 JR 廣域券搭乘 JR 列車，或搭乘南海電鐵 (需單獨購票)。', navTarget: 'Kansai International Airport' },
+                    { type: 'transport', time: '12:00', title: 'KIX 辦理登機', detail: '抵達機場，準備 14:00 班機返台。', navTarget: 'Kansai International Airport' }
+                ]
+            }
+        ];
+
+        // --- CORE APPLICATION LOGIC ---
+
+        document.addEventListener('DOMContentLoaded', () => {
+            showTab('itinerary');
+            renderItinerary();
+            loadExpenses();
+        });
+
+        function showTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.getElementById(tabId).classList.remove('hidden');
+
+            document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+            document.querySelector(`.tab-button[data-tab="${tabId}"]`).classList.add('active');
+        }
+        
+        // --- GEMINI API HELPERS ---
+        
+        async function callGeminiApi(prompt, systemInstruction, enableSearch = true) {
+            const endpoint = API_URL + API_KEY;
+            const payload = {
+                contents: [{ parts: [{ text: prompt }] }],
+                systemInstruction: { parts: [{ text: systemInstruction }] },
+                tools: enableSearch ? [{ "google_search": {} }] : undefined
+            };
+
+            let result = { text: "API 查詢失敗或無資料。", sources: [] };
+            let retries = 0;
+            const MAX_RETRIES = 5;
+
+            while (retries < MAX_RETRIES) {
+                try {
+                    const response = await fetch(endpoint, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (response.status === 429) {
+                        const delay = Math.pow(2, retries) * 1000 + Math.random() * 1000;
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                        retries++;
+                        continue;
+                    }
+
+                    const jsonResult = await response.json();
+                    const candidate = jsonResult.candidates?.[0];
+
+                    if (candidate && candidate.content?.parts?.[0]?.text) {
+                        result.text = candidate.content.parts[0].text;
+                        
+                        const groundingMetadata = candidate.groundingMetadata;
+                        if (groundingMetadata && groundingMetadata.groundingAttributions) {
+                            result.sources = groundingMetadata.groundingAttributions
+                                .map(attribution => ({
+                                    uri: attribution.web?.uri,
+                                    title: attribution.web?.title,
+                                }))
+                                .filter(source => source.uri && source.title);
+                        }
+                        return result; // Success
+                    }
+                    break; // Exit loop if content structure is unexpected
+                } catch (error) {
+                    console.error("API Call Error:", error);
+                    break;
+                }
+            }
+            return result; // Return default error
+        }
+
+        // --- ITINERARY RENDERING AND ENRICHMENT ---
+
+        function renderItinerary() {
+            const listContainer = document.getElementById('itinerary-list');
+            ITINERARY_DATA.forEach(dayData => {
+                const dayEl = document.createElement('div');
+                dayEl.className = 'bg-white p-4 rounded-xl card-shadow border-t-4 border-gray-200 space-y-4 mb-8';
+                
+                let html = `
+                    <h2 class="text-xl font-bold pb-2" style="color: var(--color-accent);">${dayData.date} - ${dayData.theme}</h2>
+                    <div id="weather-${dayData.day}" class="p-2 text-sm bg-blue-50 rounded-lg flex items-center">
+                        <svg class="w-5 h-5 mr-2 text-blue-600 animate-spin" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none" stroke-linecap="round" stroke-dasharray="30 30" /></svg>
+                        正在查詢 ${dayData.city} ${dayData.date} 的天氣預報...
+                    </div>
+                    <div class="space-y-4">
+                `;
+
+                dayData.events.forEach(event => {
+                    html += generateEventCard(dayData.day, event);
+                });
+
+                html += `
+                    </div>
+                    <div id="guide-${dayData.day}" class="pt-4 mt-4 border-t border-gray-100">
+                        <p class="font-semibold mb-2">💡 導遊小提示 (深度攻略)</p>
+                        <div class="text-sm text-gray-500" id="guide-content-${dayData.day}">
+                            <svg class="w-5 h-5 inline mr-1 text-gray-400 animate-spin" viewBox="0 0 24 24"><path fill="currentColor" d="M12 4V2a10 10 0 0 0-7.8 16.3l1.5-1.5A8 8 0 1 1 12 4z"/></svg>
+                            正在分析行程，為您提供深度攻略與亮點...
+                        </div>
+                    </div>
+                `;
+                
+                dayEl.innerHTML = html;
+                listContainer.appendChild(dayEl);
+
+                fetchDayDetails(dayData);
+            });
+        }
+
+        function generateEventCard(dayId, event) {
+            let icon = '';
+            let color = 'bg-gray-100';
+            let navButton = '';
+
+            switch (event.type) {
+                case 'attraction':
+                    icon = '⛩️'; color = 'bg-red-50';
+                    break;
+                case 'food':
+                    icon = '🍜'; color = 'bg-yellow-50';
+                    break;
+                case 'transport':
+                    icon = '🚄'; color = 'bg-blue-50';
+                    break;
+                case 'accommodation':
+                    icon = '🏨'; color = 'bg-green-50';
+                    break;
+            }
+
+            // Navigation Button for self-driving convenience
+            if (event.type !== 'transport' && event.type !== 'accommodation') {
+                const mapUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(event.navTarget)}`;
+                navButton = `
+                    <a href="${mapUrl}" target="_blank" class="text-xs font-semibold py-1 px-3 rounded-full text-white ml-2 transition" style="background-color: var(--color-accent);">
+                        導航
+                    </a>
+                `;
+            } else if (event.navTarget) {
+                 const mapUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(event.navTarget)}`;
+                navButton = `
+                    <a href="${mapUrl}" target="_blank" class="text-xs font-semibold py-1 px-3 rounded-full text-gray-700 border border-gray-300 ml-2 transition">
+                        地點
+                    </a>
+                `;
+            }
+
+            return `
+                <div class="${color} p-3 rounded-lg border border-gray-100 flex items-start">
+                    <div class="flex-shrink-0 text-lg mr-3">${icon}</div>
+                    <div class="flex-grow">
+                        <div class="flex justify-between items-center mb-1">
+                            <p class="text-sm font-semibold">${event.time} | ${event.title}</p>
+                            ${navButton}
+                        </div>
+                        <p class="text-xs text-gray-600">${event.detail}</p>
+                    </div>
+                </div>
+            `;
+        }
+        
+        async function fetchDayDetails(dayData) {
+            // 1. Fetch Weather Forecast
+            const weatherPrompt = `請用繁體中文，提供 ${dayData.date} 在 ${dayData.city} 的天氣預報和溫度範圍摘要，內容需簡潔。`;
+            const weatherSystem = "你是一個專業氣象主播，請根據搜尋結果，用一句話總結該日的天氣預報和溫度（例如：晴朗，溫度約 5°C 至 12°C）。";
+            const weatherResult = await callGeminiApi(weatherPrompt, weatherSystem);
+            
+            const weatherEl = document.getElementById(`weather-${dayData.day}`);
+            weatherEl.className = 'p-2 text-sm rounded-lg flex items-center';
+
+            if (weatherResult.text && !weatherResult.text.includes("API 查詢失敗")) {
+                weatherEl.innerHTML = `<span class="font-bold text-blue-600">☀️ ${dayData.city} 預報:</span> ${weatherResult.text}`;
+                weatherEl.style.backgroundColor = '#e0f7fa'; // Light blue success
+            } else {
+                weatherEl.innerHTML = `<span class="text-red-600">無法取得天氣資訊。</span>`;
+                weatherEl.style.backgroundColor = '#ffebee'; // Light red error
+            }
+
+            // 2. Fetch Guide Enrichment
+            const majorAttractions = dayData.events
+                .filter(e => e.type === 'attraction')
+                .map(e => e.title)
+                .join('、');
+            
+            const guidePrompt = `根據行程中的地點 (${dayData.city} / ${majorAttractions})，提供該地點的歷史故事、遊覽攻略和實用建議。請將「必吃美食」、「必買伴手禮」、「重要預約代號」等資訊用粗體或標籤明確標註出來。`;
+            const guideSystem = "你是一位專業的中文導遊。請用簡潔的Markdown格式，提供行程地點的深度攻略。請務必使用特定的HTML標籤進行亮顯：將所有「必吃/必點」內容包在 **<span class='highlight-food'></span>** 標籤內；將所有「伴手禮/購物」內容包在 **<span class='highlight-buy'></span>** 標籤內；將所有「預約/代號」內容包在 **<span class='highlight-reserve'></span>** 標籤內。確保您的內容易於手機閱讀。";
+            
+            const guideResult = await callGeminiApi(guidePrompt, guideSystem);
+            const guideEl = document.getElementById(`guide-content-${dayData.day}`);
+            
+            if (guideResult.text && !guideResult.text.includes("API 查詢失敗")) {
+                // The API response may contain special highlight tags based on the system prompt
+                // Replace markdown formatting with HTML (simple ones)
+                let enrichedText = guideResult.text
+                    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') // Bold
+                    .replace(/^- /gm, '• '); // List items
+                
+                guideEl.innerHTML = enrichedText;
+                guideEl.classList.remove('text-gray-500');
+            } else {
+                guideEl.innerHTML = `無法取得導遊提示，請檢查網路連線。`;
+                guideEl.style.color = '#ef4444';
+            }
+        }
+
+        // --- BUDGET/EXPENSE TRACKING LOGIC ---
+        let expenses = JSON.parse(localStorage.getItem('travelExpenses') || '[]');
+
+        function loadExpenses() {
+            const listEl = document.getElementById('expense-list');
+            const totalEl = document.getElementById('total-expense');
+            listEl.innerHTML = '';
+            let total = 0;
+
+            if (expenses.length === 0) {
+                listEl.innerHTML = '<li class="text-gray-500">尚無支出記錄...</li>';
+                totalEl.textContent = '0';
+                return;
+            }
+
+            expenses.forEach((item, index) => {
+                const li = document.createElement('li');
+                li.className = 'flex justify-between items-center py-1 border-b border-yellow-100';
+                li.innerHTML = `
+                    <span>${item.desc} (${item.date})</span>
+                    <span class="font-bold text-yellow-800">${item.amount.toLocaleString()} JPY</span>
+                `;
+                total += item.amount;
+                listEl.appendChild(li);
+            });
+            
+            totalEl.textContent = total.toLocaleString();
+        }
+
+        function addExpense() {
+            const amountInput = document.getElementById('expense-amount');
+            const descInput = document.getElementById('expense-desc');
+
+            const amount = parseInt(amountInput.value);
+            const desc = descInput.value.trim();
+
+            if (isNaN(amount) || amount <= 0 || desc === '') {
+                alert('請輸入有效的金額和項目說明！');
+                return;
+            }
+
+            const now = new Date();
+            const dateStr = `${now.getMonth() + 1}/${now.getDate()}`;
+
+            expenses.unshift({
+                amount: amount,
+                desc: desc,
+                date: dateStr,
+                timestamp: now.getTime()
+            });
+
+            // Keep only the latest 30 expenses
+            expenses = expenses.slice(0, 30);
+            
+            localStorage.setItem('travelExpenses', JSON.stringify(expenses));
+
+            amountInput.value = '';
+            descInput.value = '';
+            loadExpenses();
+        }
+        
+    </script>
+</body>
+</html>

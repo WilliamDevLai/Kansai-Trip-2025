@@ -1,466 +1,564 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-    
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>京阪神之旅 - 行動儀表板</title>
+    <title>京阪神聖誕旅 (自訂背景版)</title>
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Babel for JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Import Map for React & Icons -->
+    <script type="importmap">
+    {
+      "imports": {
+        "react": "https://esm.sh/react@18.2.0",
+        "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
+        "lucide-react": "https://esm.sh/lucide-react@0.294.0"
+      }
+    }
+    </script>
+
     <style>
-        /* Custom Japanese Minimalist Theme */
-        :root {
-            --color-primary: #5d5d5d; /* Deep Grey/Charcoal */
-            --color-accent: #f4b360; /* Warm Accent (Ginger) */
-            --color-bg: #f9f7f4; /* Subtle Off-White/Rice Paper */
-            --color-card-bg: #ffffff;
-            --color-wood: #c0a880; /* Light Wood Tone */
-        }
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: var(--color-bg);
-            color: var(--color-primary);
-            min-height: 100vh;
-        }
-        .tab-button.active {
-            border-bottom: 3px solid var(--color-accent);
-            font-weight: 600;
-            color: var(--color-primary);
-        }
-        .card-shadow {
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
-        }
-        /* Custom Highlight Colors */
-        .highlight-food { background-color: #fce3a2; color: #724b00; padding: 2px 6px; border-radius: 4px; font-weight: 700; display: inline-block; margin-right: 4px; }
-        .highlight-buy { background-color: #b7e3f4; color: #004d70; padding: 2px 6px; border-radius: 4px; font-weight: 700; display: inline-block; margin-right: 4px; }
-        .highlight-reserve { background-color: #f7a8a8; color: #7e0000; padding: 2px 6px; border-radius: 4px; font-weight: 700; display: inline-block; margin-right: 4px; }
+      @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap');
+      body { font-family: 'Noto Sans TC', sans-serif; background-color: #FFF8F0; }
+      ::-webkit-scrollbar { width: 6px; }
+      ::-webkit-scrollbar-track { background: transparent; }
+      ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+      
+      .weather-badge { transition: all 0.5s ease; }
     </style>
 </head>
-<body class="p-0 sm:p-4">
+<body>
+    <div id="root"></div>
 
-    <div id="app" class="max-w-xl mx-auto bg-white min-h-screen card-shadow rounded-lg">
-        <!-- Header -->
-        <header class="sticky top-0 bg-white z-10 p-4 border-b border-gray-100">
-            <h1 class="text-2xl font-bold text-center" style="color: var(--color-primary);">京阪神 | 6日旅行儀表板</h1>
-        </header>
+    <script type="text/babel" data-type="module">
+        import React, { useState, useEffect } from 'react';
+        import { createRoot } from 'react-dom/client';
+        import { 
+            MapPin, Calendar, CloudSun, ShoppingBag, Navigation, Plane, 
+            Train, Ship, Utensils, Leaf, Plus, Trash2, Wallet, 
+            ChevronDown, ChevronUp, AlertCircle, Camera, Coffee, BedDouble,
+            RefreshCw, ThermometerSun, Anchor, Sparkles
+        } from 'lucide-react';
 
-        <!-- Tabs -->
-        <nav class="flex justify-around border-b border-gray-200" id="tabs">
-            <button class="tab-button py-3 px-4 text-sm w-1/2" onclick="showTab('itinerary')" data-tab="itinerary">行程概覽</button>
-            <button class="tab-button py-3 px-4 text-sm w-1/2" onclick="showTab('tools')" data-tab="tools">實用工具</button>
-        </nav>
+        const TripApp = () => {
+            const [activeTab, setActiveTab] = useState('itinerary');
+            const [expandedDay, setExpandedDay] = useState(0);
+            const [expenses, setExpenses] = useState(() => {
+                const saved = localStorage.getItem('trip_expenses');
+                return saved ? JSON.parse(saved) : [];
+            });
+            const [newExpense, setNewExpense] = useState({ item: '', cost: '', payer: '我' });
+            
+            // 初始行程資料 (圖片已更新)
+            const initialItinerary = [
+                {
+                    day: 1,
+                    date: '12/20 (六)',
+                    dateStr: '2025-12-20',
+                    lat: 34.69, lon: 135.19, // 神戶
+                    title: '抵達關西 & 神戶移動日',
+                    weather: '載入中...', 
+                    temp: '--',
+                    bg: 'from-orange-100 to-red-50',
+                    image: 'https://i.meee.com.tw/J7INUal.png',
+                    events: [
+                        { time: '下午', title: '抵達關西機場 (KIX)', desc: 'JX822 航班抵達。', type: 'flight', location: '關西國際機場' },
+                        { time: 'T1 1F', title: '購買高速船票', desc: '1F 櫃台買 Bay Shuttle 船票 (外國人優惠 ¥500)。', type: 'ticket' },
+                        { time: 'T1 2F', title: '領取 JR 廣域券', desc: '⚠️ 重要：2F 綠色機器領票，啟用日請選「12月21日」！順便劃位指定席。', type: 'alert', location: '關西機場 JR綠色窗口' },
+                        { time: '交通', title: '前往神戶機場', desc: '搭接駁車去碼頭 ➔ 搭高速船至神戶機場。', type: 'ship', location: 'Kobe-Kansai Airport Bay Shuttle' },
+                        { time: '傍晚', title: '三宮轉乘', desc: '搭 Port Liner 至三宮 ➔ 轉地鐵西神山手線至西神中央站。', type: 'transport', location: 'Sannomiya Station' },
+                        { time: '住宿', title: '神戶西廣場飯店', desc: 'Check-in 放行李。', type: 'stay', location: 'Kobe Plaza Hotel West' },
+                        { time: '晚上', title: '神戶港夜景', desc: '搭地鐵回 Harborland，逛 Umie 聖誕市集。', type: 'spot', location: 'Kobe Harborland umie' },
+                    ]
+                },
+                {
+                    day: 2,
+                    date: '12/21 (日)',
+                    dateStr: '2025-12-21',
+                    lat: 35.01, lon: 135.76, // 京都
+                    title: '錦市場美食 & 伏見稻荷',
+                    weather: '載入中...',
+                    temp: '--',
+                    bg: 'from-red-50 to-orange-100',
+                    image: 'https://i.meee.com.tw/pbYGiVH.png',
+                    events: [
+                        { time: '09:00', title: '神戶 ➔ 京都', desc: '★ JR 廣域券啟用日！JR 新快速直達京都車站。', type: 'train', location: 'Kyoto Station' },
+                        { time: '飯店', title: '寄放行李', desc: '京都世紀飯店 (車站旁)。', type: 'hotel', location: 'Kyoto Century Hotel' },
+                        { time: '10:15', title: '錦市場 (早午餐)', desc: '必吃：豆乳甜甜圈、玉子燒、炸物。', type: 'food', location: 'Nishiki Market' },
+                        { time: '12:30', title: '移動至伏見稻荷', desc: '祇園四條站搭京阪電車 ➔ 伏見稻荷站。', type: 'transport' },
+                        { time: '13:00', title: '伏見稻荷大社', desc: '參觀千本鳥居。', type: 'spot', location: 'Fushimi Inari Taisha' },
+                        { time: '15:30', title: '返回京都', desc: '搭 JR 奈良線回京都車站。', type: 'train' },
+                        { time: '16:00', title: '★ 寄大行李', desc: '⚠️ 請飯店用宅急便將大行李寄往「12/23 大阪飯店」，只留隨身包去伊根。', type: 'alert' },
+                        { time: '晚上', title: '京都站晚餐', desc: '伊勢丹百貨或拉麵小路。', type: 'food', location: 'Kyoto Ramen Koji' },
+                    ]
+                },
+                {
+                    day: 3,
+                    date: '12/22 (一)',
+                    dateStr: '2025-12-22',
+                    lat: 35.57, lon: 135.19, // 伊根
+                    title: '伊根舟屋：寒鰤魚與海鷗',
+                    weather: '載入中...',
+                    temp: '--',
+                    bg: 'from-blue-50 to-cyan-100',
+                    image: 'https://i.meee.com.tw/AEQj6QV.png',
+                    events: [
+                        { time: '08:15', title: '京都車站進站', desc: '往 31 號月台移動。', type: 'transport' },
+                        { time: '08:38', title: '★ 特急橋立 1 號', desc: '京都發車 ➔ 直達天橋立 (10:40 抵達)。', type: 'train' },
+                        { time: '10:45', title: '兌換通票', desc: '出示 QR Code 換「天橋立伊根通票」，行李寄放車站置物櫃。', type: 'ticket', location: 'Amanohashidate Station' },
+                        { time: '11:15', title: '巴士前往伊根', desc: '站前搭丹後巴士 (伊根線)，憑通票免費。', type: 'bus' },
+                        { time: '12:20', title: '午餐：舟屋食堂', desc: '★ 必吃：寒鰤魚丼 (Buri Don)，冬季限定肥美海鮮！', type: 'food', location: 'Funaya Shokudo' },
+                        { time: '13:30', title: '伊根灣遊覽船', desc: '搭船餵海鷗 (通票免費)，欣賞舟屋全景。', type: 'ship', location: 'Ine Bay Sightseeing Boat' },
+                        { time: '14:30', title: '伊根散策', desc: '漫步舟屋群或造訪向井酒造。', type: 'spot', location: 'Ine no Funaya' },
+                        { time: '16:03', title: '搭巴士回程', desc: '返回天橋立 (約 17:00 抵達)。', type: 'bus' },
+                        { time: '18:00', title: '萬楓酒店 Check-in', desc: 'Fairfield by Marriott。', type: 'stay', location: 'Fairfield by Marriott Kyoto Amanohashidate' },
+                        { time: '晚餐', title: '金ぱ銀ぱ', desc: '飯店隔壁迴轉壽司 (週一有開)。', type: 'food', location: 'Kaitenzushi Kinpa Ginpa' },
+                        { time: '晚上', title: '洗衣時間', desc: '利用飯店 1 樓自助洗衣 (記得帶膠囊)。', type: 'info' },
+                    ]
+                },
+                {
+                    day: 4,
+                    date: '12/23 (二)',
+                    dateStr: '2025-12-23',
+                    lat: 35.55, lon: 135.19, // 天橋立/西舞鶴
+                    title: '赤松號 & 大阪城燈光秀',
+                    weather: '載入中...',
+                    temp: '--',
+                    bg: 'from-stone-50 to-amber-50',
+                    image: 'https://i.meee.com.tw/z0zBkzF.png',
+                    events: [
+                        { time: '08:30', title: '傘松公園 (昇龍觀)', desc: '搭觀光船過阿蘇海 ➔ 搭纜車上山看胯下觀景。', type: 'spot', location: 'Kasamatsu Park' },
+                        { time: '早點', title: '鶴屋食堂', desc: '吃丹後寶丼 (紅米海鮮丼)。', type: 'food', location: 'Tsuruya Shokudo' },
+                        { time: '11:29', title: '★ 丹後赤松 2 號', desc: '天橋立發車 (需預約券)。欣賞奈具海岸絕景。', type: 'train' },
+                        { time: '12:20', title: '抵達西舞鶴', desc: '下車出站吃午餐。', type: 'transport', location: 'Nishi-Maizuru Station' },
+                        { time: '午餐', title: '魚源 (Totogen)', desc: '車站步行 3 分鐘，在地人推薦海鮮定食。', type: 'food', location: 'Uogen Maizuru' },
+                        { time: '14:36', title: '★ 特急舞鶴 12 號', desc: '西舞鶴發車 ➔ 京都 (16:07 抵達)。', type: 'train' },
+                        { time: '16:15', title: '轉乘至大阪', desc: '京都轉乘新快速至大阪 ➔ 地鐵至心齋橋。', type: 'transport' },
+                        { time: '17:00', title: '飯店領行李', desc: '入住心齋橋東方快捷，領取Day2寄來的行李。', type: 'hotel', location: 'Hotel Oriental Express Osaka Shinsaibashi' },
+                        { time: '18:30', title: '★ 大阪城燈光秀', desc: 'Osaka Castle Illuminage (西之丸庭園)。欣賞冬季限定華麗燈飾。', type: 'spot', location: 'Nishinomaru Garden' },
+                    ]
+                },
+                {
+                    day: 5,
+                    date: '12/24 (三)',
+                    dateStr: '2025-12-24',
+                    lat: 34.69, lon: 135.50, // 大阪
+                    title: '復古大阪：新世界 & 通天閣',
+                    weather: '載入中...',
+                    temp: '--',
+                    bg: 'from-yellow-50 to-orange-100',
+                    image: 'https://i.meee.com.tw/ZeK4l0S.png',
+                    events: [
+                        { time: '上午', title: '新世界 & 通天閣', desc: '地鐵惠美須町站。感受昭和復古風情，拍誇張招牌。', type: 'spot', location: 'Shinsekai' },
+                        { time: '體驗', title: '通天閣溜滑梯', desc: 'Tower Slider (使用週遊卡免費)。', type: 'play', location: 'Tsutenkaku' },
+                        { time: '午餐', title: '新世界串炸', desc: '必吃大阪名物 Kushikatsu。', type: 'food', location: 'Kushikatsu Daruma Shinsekai' },
+                        { time: '下午', title: '梅田購物 / 中崎町', desc: '百貨激戰區購物，或去中崎町逛文青咖啡館。', type: 'shop', location: 'Umeda' },
+                        { time: '17:00', title: '梅田藍天大廈', desc: '空中庭園展望台看夜景 (聖誕期間人多請提早)。', type: 'spot', location: 'Umeda Sky Building' },
+                        { time: '晚上', title: '聖誕大餐', desc: '預約心齋橋或梅田的餐廳慶祝聖誕夜 🎄', type: 'food' },
+                    ]
+                },
+                {
+                    day: 6,
+                    date: '12/25 (四)',
+                    dateStr: '2025-12-25',
+                    lat: 34.69, lon: 135.50, // 大阪/關西
+                    title: '最後採買 & 返回台灣',
+                    weather: '載入中...',
+                    temp: '--',
+                    bg: 'from-orange-50 to-red-50',
+                    image: 'https://i.meee.com.tw/zclFp4O.png',
+                    events: [
+                        { time: '上午', title: '退房 / 最後採買', desc: '心齋橋最後補貨 (藥妝、伴手禮)。', type: 'shop', location: 'Shinsaibashi Shopping Arcade' },
+                        { time: '11:00', title: '前往關西機場', desc: '地鐵至天王寺/新大阪 ➔ 轉 ★ JR 特急 Haruka。', type: 'train' },
+                        { time: '13:00', title: '抵達機場 (KIX)', desc: '辦理 JX823 登機手續、逛免稅店。', type: 'flight', location: 'Kansai International Airport' },
+                        { time: '下午', title: '起飛返台', desc: '帶著滿滿的回憶回家囉！', type: 'flight' },
+                    ]
+                },
+            ];
 
-        <!-- Content Area -->
-        <main class="p-4">
-            <!-- 1. 行程概覽 (Itinerary Tab) -->
-            <div id="itinerary" class="tab-content space-y-6">
-                <!-- Daily Itinerary will be dynamically inserted here -->
-                <div id="itinerary-list" class="space-y-6"></div>
-            </div>
+            const [itineraryData, setItineraryData] = useState(initialItinerary);
+            const [weatherStatus, setWeatherStatus] = useState('updating'); // updating, success, error
 
-            <!-- 2. 實用工具 (Tools Tab) -->
-            <div id="tools" class="tab-content space-y-6 hidden">
-                <h2 class="text-xl font-semibold mb-3">旅行資料中心</h2>
-                
-                <!-- 航班資訊 -->
-                <div class="p-4 bg-gray-50 rounded-lg border border-gray-100">
-                    <h3 class="font-bold text-lg mb-2 text-blue-700">✈️ 航班資訊</h3>
-                    <p class="text-sm">去程 (12/20): 桃園機場 (TPE) -> 關西機場 (KIX)</p>
-                    <p class="text-sm">回程 (12/25): 關西機場 (KIX) 14:00 起飛 -> 桃園機場 (TPE)</p>
-                    <p class="text-sm font-semibold mt-2">重要提醒：回程需在 12:00 前抵達 KIX 辦理登機。</p>
-                </div>
+            // Fetch Real-time Weather
+            useEffect(() => {
+                const fetchWeather = async () => {
+                    try {
+                        const updatedData = await Promise.all(itineraryData.map(async (day) => {
+                            const url = `https://api.open-meteo.com/v1/forecast?latitude=${day.lat}&longitude=${day.lon}&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=Asia%2FTokyo&start_date=${day.dateStr}&end_date=${day.dateStr}`;
+                            
+                            try {
+                                const response = await fetch(url);
+                                const data = await response.json();
+                                
+                                if (data.daily) {
+                                    const code = data.daily.weather_code[0];
+                                    const min = Math.round(data.daily.temperature_2m_min[0]);
+                                    const max = Math.round(data.daily.temperature_2m_max[0]);
+                                    
+                                    // WMO Code Interpretation
+                                    let weatherText = "晴朗";
+                                    if (code >= 1 && code <= 3) weatherText = "多雲";
+                                    if (code >= 45 && code <= 48) weatherText = "有霧";
+                                    if (code >= 51 && code <= 67) weatherText = "有雨 ☔";
+                                    if (code >= 71 && code <= 77) weatherText = "降雪 ❄️";
+                                    if (code >= 80) weatherText = "陣雨 🌧️";
 
-                <!-- 住宿資訊 -->
-                <div class="p-4 bg-gray-50 rounded-lg border border-gray-100">
-                    <h3 class="font-bold text-lg mb-2 text-green-700">🏨 住宿資訊</h3>
-                    <ul class="text-sm space-y-1">
-                        <li>**12/20 (神戶):** 神戶西廣場飯店 (Seishin-Chuo)</li>
-                        <li>**12/21 (京都):** 京都世紀飯店 (Kyoto Station)</li>
-                        <li>**12/22 (天橋立):** 天橋立萬楓酒店 (Fairfield by Marriott)</li>
-                        <li>**12/23-24 (大阪):** 東方快捷飯店 - 大阪心齋橋</li>
-                    </ul>
-                </div>
+                                    return {
+                                        ...day,
+                                        weather: weatherText,
+                                        temp: `${min}°C - ${max}°C`
+                                    };
+                                }
+                            } catch (e) {
+                                console.error("Weather fetch failed for day", day.day);
+                            }
+                            return { ...day, weather: "歷史平均", temp: "6-12°C" }; // Fallback
+                        }));
+                        
+                        setItineraryData(updatedData);
+                        setWeatherStatus('success');
+                    } catch (error) {
+                        console.error("Global weather fetch failed");
+                        setWeatherStatus('error');
+                    }
+                };
 
-                <!-- 緊急聯絡電話 -->
-                <div class="p-4 bg-red-50 rounded-lg border border-red-100">
-                    <h3 class="font-bold text-lg mb-2 text-red-700">🚨 緊急聯絡電話</h3>
-                    <ul class="text-sm space-y-1">
-                        <li>**警察 (Police):** 110</li>
-                        <li>**救護車/消防 (Ambulance/Fire):** 119</li>
-                        <li>**台灣駐日緊急聯絡:** +81-(0)-80-6007-8895</li>
-                    </ul>
-                </div>
+                fetchWeather();
+            }, []);
 
-                <!-- 記帳/預算表 -->
-                <div class="p-4 bg-yellow-50 rounded-lg border border-yellow-100">
-                    <h3 class="font-bold text-lg mb-2 text-yellow-700">💰 每日記帳/預算表</h3>
-                    <div class="flex space-x-2 mb-3">
-                        <input type="number" id="expense-amount" placeholder="金額 (日圓)" class="p-2 border rounded w-1/3 text-sm">
-                        <input type="text" id="expense-desc" placeholder="項目說明 (例: 晚餐)" class="p-2 border rounded w-1/3 text-sm flex-grow">
-                        <button onclick="addExpense()" class="bg-yellow-600 hover:bg-yellow-700 text-white p-2 rounded text-sm transition">新增</button>
-                    </div>
-                    <div class="text-sm font-semibold mb-2">
-                        總支出：<span id="total-expense" class="text-xl text-yellow-700">0</span> 日圓
-                    </div>
-                    <ul id="expense-list" class="text-sm space-y-1 h-32 overflow-y-auto border-t pt-2">
-                        <!-- Expenses will be listed here -->
-                        <li class="text-gray-500">尚無支出記錄...</li>
-                    </ul>
-                </div>
+            // Save expenses
+            useEffect(() => {
+                localStorage.setItem('trip_expenses', JSON.stringify(expenses));
+            }, [expenses]);
 
-                <p class="text-xs text-center text-gray-400 mt-4">註: 本記帳功能僅在本裝置有效，不會雲端同步。</p>
-            </div>
-        </main>
-    </div>
-
-    <script>
-        // Global Variables for API and Configuration
-        const API_KEY = ""; // Leave as is for Canvas environment
-        const API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=";
-        
-        // --- DATA STRUCTURE: ITINERARY ---
-        const ITINERARY_DATA = [
-            {
-                day: 1,
-                date: "12/20 (五)",
-                city: "神戶 (Kobe)",
-                theme: "抵達與港灣之夜",
-                events: [
-                    { type: 'transport', time: '下午', title: '關西機場 (KIX) 抵達', detail: '購買 ICOCA 卡，領取高速船票。', navTarget: 'Kansai International Airport' },
-                    { type: 'transport', time: '下午', title: '高速船 + Port Liner', detail: '搭乘 Bay Shuttle 至神戶機場，轉乘 Port Liner 至三宮。', navTarget: 'Kobe Airport' },
-                    { type: 'accommodation', time: '傍晚', title: '飯店入住', detail: '三宮轉乘地鐵至西神中央站，入住神戶西廣場飯店。', navTarget: '神戶西廣場飯店' },
-                    { type: 'attraction', time: '晚上', title: '神戶港灣樂園夜景', detail: '欣賞浪漫夜景、遠觀神戶塔，並參觀 Umie 聖誕市集。', navTarget: 'Kobe Harborland' },
-                    { type: 'food', time: '晚餐', title: '神戶牛或海鮮', detail: '在 Harborland 周邊或神戶站附近享用晚餐。', navTarget: 'Kobe Station' }
-                ]
-            },
-            {
-                day: 2,
-                date: "12/21 (六)",
-                city: "京都 (Kyoto)",
-                theme: "JR 啟用與千本鳥居",
-                events: [
-                    { type: 'transport', time: '上午', title: '神戶 -> 京都', detail: '從西神中央站搭地鐵至三宮，轉乘 JR 列車至京都車站。**JR 廣域周遊券今日啟用！**', navTarget: 'Kyoto Station' },
-                    { type: 'accommodation', time: '中午', title: '京都世紀飯店寄放行李', detail: '飯店就在京都車站旁，非常方便。', navTarget: '京都世紀飯店' },
-                    { type: 'attraction', time: '下午', title: '伏見稻荷大社', detail: '搭乘 JR 奈良線至稻荷站，參觀著名的千本鳥居。', navTarget: '伏見稻荷大社' },
-                    { type: 'food', time: '晚餐', title: '京都車站周邊拉麵/美食', detail: '可在京都拉麵小路或伊勢丹百貨內用餐。', navTarget: 'Kyoto Station' }
-                ]
-            },
-            {
-                day: 3,
-                date: "12/22 (日)",
-                city: "天橋立 (Amanohashidate)",
-                theme: "日本三景與飛龍觀",
-                events: [
-                    { type: 'transport', time: '上午', title: '京都 -> 天橋立', detail: 'JR 特急「橋立號」直達天橋立車站。', navTarget: 'Amanohashidate Station' },
-                    { type: 'accommodation', time: '中午', title: '天橋立萬楓酒店入住', detail: '辦理入住，並在車站服務中心購買天橋立周遊券。', navTarget: '天橋立萬楓酒店' },
-                    { type: 'attraction', time: '下午', title: '傘松公園觀景台', detail: '搭乘纜車/吊椅上山，體驗「股見」（從胯下倒著看），欣賞飛龍觀。', navTarget: '傘松公園' },
-                    { type: 'food', time: '晚餐', title: '當地海鮮料理', detail: '在飯店或周邊餐廳享用當地新鮮海產。', navTarget: 'Amanohashidate' }
-                ]
-            },
-            {
-                day: 4,
-                date: "12/23 (一)",
-                city: "大阪 (Osaka)",
-                theme: "舟屋、天守閣與道頓堀",
-                events: [
-                    { type: 'attraction', time: '上午', title: '伊根舟屋 (可選)', detail: '若時間充裕，可使用天橋立周遊券前往伊根欣賞海上漁村風光。', navTarget: '伊根舟屋' },
-                    { type: 'transport', time: '中午', title: '天橋立 -> 大阪', detail: 'JR 列車經京都轉車至大阪，前往心齋橋。', navTarget: '東方快捷飯店 - 大阪心齋橋' },
-                    { type: 'accommodation', time: '下午', title: '東方快捷飯店入住', detail: '飯店Check-in，**大阪週遊卡 (1日券) 今日啟用！**', navTarget: '東方快捷飯店 - 大阪心齋橋' },
-                    { type: 'attraction', time: '下午', title: '大阪城天守閣', detail: '使用週遊卡免費入場。感受豐臣秀吉的歷史。', navTarget: '大阪城天守閣' },
-                    { type: 'food', time: '晚上', title: '道頓堀/心齋橋美食', detail: '品嚐章魚燒、大阪燒、金龍拉麵等經典大阪小吃。', navTarget: 'Dotonbori' }
-                ]
-            },
-            {
-                day: 5,
-                date: "12/24 (二)",
-                city: "大阪 (Osaka)",
-                theme: "免費景點與梅田夜景",
-                events: [
-                    { type: 'transport', time: '全日', title: '大阪市區地鐵/巴士', detail: '**大阪週遊卡 (2日券) 今日啟用！** 無限次搭乘地鐵。', navTarget: 'Osaka Metro' },
-                    { type: 'attraction', time: '白天', title: '大阪免費景點或購物', detail: '可選參觀大阪生活今昔館、通天閣（週遊卡免費）。', navTarget: '大阪生活今昔館' },
-                    { type: 'food', time: '傍晚', title: '梅田百貨晚餐', detail: '在梅田地區找一家有聖誕氛圍的餐廳。', navTarget: 'Umeda' },
-                    { type: 'attraction', time: '晚上', title: '梅田藍天大廈空中庭園', detail: '使用週遊卡免費登上，欣賞大阪壯觀的聖誕夜景。', navTarget: '梅田藍天大廈空中庭園' }
-                ]
-            },
-            {
-                day: 6,
-                date: "12/25 (三)",
-                city: "大阪 -> 桃園",
-                theme: "最終採購與返程",
-                events: [
-                    { type: 'food', time: '上午', title: '最終美食/採購', detail: '選擇 法善寺橫丁 或 **黑門市場**（必吃海鮮早餐）進行最後的遊覽與採購。', navTarget: '黑門市場' },
-                    { type: 'transport', time: '10:30', title: '退房並前往難波', detail: '從心齋橋飯店出發前往南海難波站或 JR 大阪站。', navTarget: 'Nankai Namba Station' },
-                    { type: 'transport', time: '11:00', title: '大阪 -> 關西機場 (KIX)', detail: '使用 JR 廣域券搭乘 JR 列車，或搭乘南海電鐵 (需單獨購票)。', navTarget: 'Kansai International Airport' },
-                    { type: 'transport', time: '12:00', title: 'KIX 辦理登機', detail: '抵達機場，準備 14:00 班機返台。', navTarget: 'Kansai International Airport' }
-                ]
-            }
-        ];
-
-        // --- CORE APPLICATION LOGIC ---
-
-        document.addEventListener('DOMContentLoaded', () => {
-            showTab('itinerary');
-            renderItinerary();
-            loadExpenses();
-        });
-
-        function showTab(tabId) {
-            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
-            document.getElementById(tabId).classList.remove('hidden');
-
-            document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
-            document.querySelector(`.tab-button[data-tab="${tabId}"]`).classList.add('active');
-        }
-        
-        // --- GEMINI API HELPERS ---
-        
-        async function callGeminiApi(prompt, systemInstruction, enableSearch = true) {
-            const endpoint = API_URL + API_KEY;
-            const payload = {
-                contents: [{ parts: [{ text: prompt }] }],
-                systemInstruction: { parts: [{ text: systemInstruction }] },
-                tools: enableSearch ? [{ "google_search": {} }] : undefined
+            const handleAddExpense = (e) => {
+                e.preventDefault();
+                if (!newExpense.item || !newExpense.cost) return;
+                setExpenses([...expenses, { ...newExpense, id: Date.now() }]);
+                setNewExpense({ item: '', cost: '', payer: '我' });
             };
 
-            let result = { text: "API 查詢失敗或無資料。", sources: [] };
-            let retries = 0;
-            const MAX_RETRIES = 5;
+            const removeExpense = (id) => {
+                setExpenses(expenses.filter(ex => ex.id !== id));
+            };
 
-            while (retries < MAX_RETRIES) {
-                try {
-                    const response = await fetch(endpoint, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
-                    });
+            const totalCost = expenses.reduce((acc, curr) => acc + Number(curr.cost), 0);
 
-                    if (response.status === 429) {
-                        const delay = Math.pow(2, retries) * 1000 + Math.random() * 1000;
-                        await new Promise(resolve => setTimeout(resolve, delay));
-                        retries++;
-                        continue;
-                    }
+            const openMap = (location) => {
+                if (!location) return;
+                const query = encodeURIComponent(location);
+                window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, '_blank');
+            };
 
-                    const jsonResult = await response.json();
-                    const candidate = jsonResult.candidates?.[0];
-
-                    if (candidate && candidate.content?.parts?.[0]?.text) {
-                        result.text = candidate.content.parts[0].text;
-                        
-                        const groundingMetadata = candidate.groundingMetadata;
-                        if (groundingMetadata && groundingMetadata.groundingAttributions) {
-                            result.sources = groundingMetadata.groundingAttributions
-                                .map(attribution => ({
-                                    uri: attribution.web?.uri,
-                                    title: attribution.web?.title,
-                                }))
-                                .filter(source => source.uri && source.title);
-                        }
-                        return result; // Success
-                    }
-                    break; // Exit loop if content structure is unexpected
-                } catch (error) {
-                    console.error("API Call Error:", error);
-                    break;
+            const getIcon = (type) => {
+                switch (type) {
+                case 'flight': return <Plane size={18} className="text-blue-500" />;
+                case 'train': return <Train size={18} className="text-green-600" />;
+                case 'ship': return <Anchor size={18} className="text-blue-400" />;
+                case 'bus': return <Navigation size={18} className="text-yellow-600" />;
+                case 'food': return <Utensils size={18} className="text-orange-500" />;
+                case 'shop': return <ShoppingBag size={18} className="text-pink-500" />;
+                case 'stay': case 'hotel': return <BedDouble size={18} className="text-purple-500" />;
+                case 'ticket': return <Camera size={18} className="text-teal-500" />;
+                case 'alert': return <AlertCircle size={18} className="text-red-500" />;
+                case 'play': return <Sparkles size={18} className="text-yellow-500" />;
+                default: return <MapPin size={18} className="text-gray-500" />;
                 }
-            }
-            return result; // Return default error
-        }
+            };
 
-        // --- ITINERARY RENDERING AND ENRICHMENT ---
-
-        function renderItinerary() {
-            const listContainer = document.getElementById('itinerary-list');
-            ITINERARY_DATA.forEach(dayData => {
-                const dayEl = document.createElement('div');
-                dayEl.className = 'bg-white p-4 rounded-xl card-shadow border-t-4 border-gray-200 space-y-4 mb-8';
-                
-                let html = `
-                    <h2 class="text-xl font-bold pb-2" style="color: var(--color-accent);">${dayData.date} - ${dayData.theme}</h2>
-                    <div id="weather-${dayData.day}" class="p-2 text-sm bg-blue-50 rounded-lg flex items-center">
-                        <svg class="w-5 h-5 mr-2 text-blue-600 animate-spin" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none" stroke-linecap="round" stroke-dasharray="30 30" /></svg>
-                        正在查詢 ${dayData.city} ${dayData.date} 的天氣預報...
+            return (
+                <div className="min-h-screen bg-[#FFF8F0] pb-24 max-w-md mx-auto shadow-2xl relative">
+                {/* Header */}
+                <header className="bg-gradient-to-br from-red-600 to-orange-500 text-white p-6 rounded-b-[35px] shadow-lg sticky top-0 z-50">
+                    <div className="flex justify-between items-start">
+                    <div>
+                        <div className="flex items-center gap-2 mb-1 opacity-90">
+                        <span className="text-xs font-bold border border-white/40 px-2 py-0.5 rounded-full">JX822</span>
+                        <span className="text-xs font-bold border border-white/40 px-2 py-0.5 rounded-full">6天5夜</span>
+                        </div>
+                        <h1 className="text-2xl font-bold tracking-wide flex items-center gap-2 drop-shadow-sm">
+                        <Leaf className="fill-red-200 text-red-100" size={24}/> 京阪神聖誕旅
+                        </h1>
+                        <p className="text-red-100 text-xs mt-1 font-medium tracking-wider">12/20 (六) - 12/25 (四)</p>
                     </div>
-                    <div class="space-y-4">
-                `;
-
-                dayData.events.forEach(event => {
-                    html += generateEventCard(dayData.day, event);
-                });
-
-                html += `
+                    <div className="text-center bg-white/10 backdrop-blur-sm p-2 rounded-xl border border-white/20">
+                        <span className="text-2xl font-bold block leading-none">Day {expandedDay + 1}</span>
+                        {weatherStatus === 'updating' ? (
+                            <RefreshCw size={12} className="animate-spin mx-auto mt-1 opacity-80"/>
+                        ) : (
+                            <span className="text-[10px] uppercase opacity-80">Ready</span>
+                        )}
                     </div>
-                    <div id="guide-${dayData.day}" class="pt-4 mt-4 border-t border-gray-100">
-                        <p class="font-semibold mb-2">💡 導遊小提示 (深度攻略)</p>
-                        <div class="text-sm text-gray-500" id="guide-content-${dayData.day}">
-                            <svg class="w-5 h-5 inline mr-1 text-gray-400 animate-spin" viewBox="0 0 24 24"><path fill="currentColor" d="M12 4V2a10 10 0 0 0-7.8 16.3l1.5-1.5A8 8 0 1 1 12 4z"/></svg>
-                            正在分析行程，為您提供深度攻略與亮點...
+                    </div>
+                </header>
+
+                {/* Main Content */}
+                <div className="p-4 space-y-4">
+                    
+                    {/* TAB: ITINERARY */}
+                    {activeTab === 'itinerary' && (
+                    <div className="space-y-5 animate-fade-in">
+                        {itineraryData.map((day, index) => (
+                        <div 
+                            key={day.day} 
+                            className={`bg-white rounded-[24px] shadow-sm border border-orange-100/50 overflow-hidden transition-all duration-300 ${expandedDay === index ? 'ring-2 ring-red-200 shadow-md' : 'opacity-90'}`}
+                        >
+                            {/* Card Cover */}
+                            <div 
+                            onClick={() => setExpandedDay(expandedDay === index ? -1 : index)}
+                            className="relative cursor-pointer h-28 group"
+                            >
+                            <img src={day.image} alt={day.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+                            
+                            <div className="absolute top-3 left-3 bg-white/90 backdrop-blur text-red-600 text-[10px] font-bold px-2 py-1 rounded-full shadow-sm">
+                                {day.date}
+                            </div>
+                            
+                            {/* Live Weather Badge on Cover */}
+                            <div className="absolute top-3 right-3 bg-black/40 backdrop-blur text-white text-[10px] px-2 py-1 rounded-full flex items-center gap-1 weather-badge">
+                                {weatherStatus === 'updating' ? (
+                                    <RefreshCw size={10} className="animate-spin" /> 
+                                ) : (
+                                    <CloudSun size={12} className="text-yellow-300"/>
+                                )}
+                                <span>{day.weather === '載入中...' ? '更新中' : day.temp}</span>
+                            </div>
+
+                            <div className="absolute bottom-0 left-0 p-4 w-full text-white flex justify-between items-end">
+                                <div>
+                                <h3 className="font-bold text-lg leading-tight shadow-black drop-shadow-md">{day.title}</h3>
+                                {expandedDay !== index && <p className="text-[10px] opacity-90 mt-1 flex items-center gap-1"><MapPin size={10}/> {day.events.length} 個行程點</p>}
+                                </div>
+                                <div className="bg-white/20 p-1.5 rounded-full backdrop-blur-sm">
+                                {expandedDay === index ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                                </div>
+                            </div>
+                            </div>
+
+                            {/* Expanded Details */}
+                            {expandedDay === index && (
+                            <div className={`p-4 bg-gradient-to-b ${day.bg}`}>
+                                {/* Weather Bar Expanded */}
+                                <div className="flex items-center justify-between text-xs text-gray-600 mb-5 bg-white/80 backdrop-blur p-2.5 rounded-xl border border-white/50 shadow-sm">
+                                <div className="flex items-center gap-2">
+                                    <ThermometerSun size={16} className="text-red-500" />
+                                    <span className="font-bold text-gray-800 text-sm">{day.weather} {day.temp}</span>
+                                </div>
+                                <span className="text-[10px] text-gray-500 bg-white px-2 py-0.5 rounded-full shadow-sm">
+                                    {day.day === 3 || day.day === 4 ? '海邊風大' : '市區'}
+                                </span>
+                                </div>
+
+                                {/* Timeline */}
+                                <div className="relative border-l-2 border-red-200/60 ml-3 space-y-6 pb-2">
+                                {day.events.map((event, idx) => (
+                                    <div key={idx} className="ml-6 relative">
+                                    <div className={`absolute -left-[31px] top-1.5 w-3.5 h-3.5 rounded-full border-2 border-white shadow-sm z-10 ${event.type === 'alert' ? 'bg-red-500 animate-pulse' : 'bg-red-300'}`}></div>
+                                    <div className="flex flex-col gap-1">
+                                        <span className="text-[11px] font-bold text-red-800 bg-red-100/50 px-2 py-0.5 rounded-md w-fit">{event.time}</span>
+                                        <div className="bg-white/90 p-3.5 rounded-2xl shadow-sm border border-white mt-1 relative">
+                                        <div className="flex justify-between items-start gap-3">
+                                            <div className="flex-1">
+                                            <h4 className={`font-bold text-sm flex items-center gap-2 mb-1.5 ${event.type === 'alert' ? 'text-red-600' : 'text-gray-800'}`}>
+                                                {getIcon(event.type)} {event.title}
+                                            </h4>
+                                            <p className="text-xs text-gray-600 leading-relaxed whitespace-pre-line">{event.desc}</p>
+                                            </div>
+                                            {event.location && (
+                                            <button onClick={(e) => { e.stopPropagation(); openMap(event.location); }} className="bg-blue-50 p-2 rounded-xl text-blue-600 hover:bg-blue-100 active:scale-95 transition-all shadow-sm flex-shrink-0">
+                                                <Navigation size={18} /><span className="text-[8px] block text-center font-bold mt-0.5">GO</span>
+                                            </button>
+                                            )}
+                                        </div>
+                                        </div>
+                                    </div>
+                                    </div>
+                                ))}
+                                </div>
+                            </div>
+                            )}
+                        </div>
+                        ))}
+                    </div>
+                    )}
+
+                    {/* TAB: GUIDE */}
+                    {activeTab === 'guide' && (
+                    <div className="space-y-4 animate-fade-in pb-20">
+                        {/* Weather & Cloth */}
+                        <div className="bg-white p-5 rounded-[24px] shadow-sm border border-blue-100">
+                        <h3 className="font-bold text-gray-800 flex items-center gap-2 mb-3 text-lg">
+                            <CloudSun className="text-blue-500" /> 12月穿衣指南
+                        </h3>
+                        <div className="flex gap-4 mb-4">
+                            <div className="bg-blue-50 rounded-2xl p-3 flex-1 text-center">
+                            <span className="block text-2xl font-bold text-blue-600">8°C</span>
+                            <span className="text-xs text-blue-400">平均氣溫</span>
+                            </div>
+                            <div className="bg-orange-50 rounded-2xl p-3 flex-1 text-center">
+                            <span className="block text-2xl font-bold text-orange-600">乾燥</span>
+                            <span className="text-xs text-orange-400">注意保濕</span>
+                            </div>
+                        </div>
+                        <ul className="text-sm text-gray-600 space-y-2.5 bg-gray-50 p-4 rounded-xl">
+                            <li className="flex gap-2"><span className="text-lg">🧣</span> <span>洋蔥式：發熱衣 + 毛衣 + 防風大衣。</span></li>
+                            <li className="flex gap-2"><span className="text-lg">🧤</span> <span>伊根海邊、大阪城晚上很冷，必備帽子圍巾。</span></li>
+                            <li className="flex gap-2"><span className="text-lg">👟</span> <span>每天約1萬步，請穿好走的鞋。</span></li>
+                        </ul>
+                        </div>
+
+                        {/* Souvenir Check List */}
+                        <div className="bg-white p-5 rounded-[24px] shadow-sm border border-pink-100">
+                        <h3 className="font-bold text-gray-800 flex items-center gap-2 mb-4 text-lg">
+                            <ShoppingBag className="text-pink-500" /> 必買伴手禮清單
+                        </h3>
+                        <div className="space-y-2">
+                            {[
+                            {n:'京都北山 茶之菓', t:'京都/抹茶控必買'},
+                            {n:'小倉山莊 仙貝', t:'京都/送禮首選'},
+                            {n:'呼吸巧克力', t:'大阪/提拉米蘇味'},
+                            {n:'551 蓬萊肉包', t:'大阪/現吃'},
+                            {n:'吉伊卡哇周邊', t:'伏見稻荷/梅田'},
+                            {n:'天橋立 智惠之餅', t:'天橋立/吃智慧'}
+                            ].map((item, i) => (
+                            <label key={i} className="flex items-center gap-3 p-3 rounded-xl hover:bg-pink-50 transition-colors cursor-pointer border border-transparent hover:border-pink-100">
+                                <input type="checkbox" className="w-5 h-5 accent-pink-500 rounded-md" />
+                                <div>
+                                <span className="text-sm font-bold text-gray-700 block">{item.n}</span>
+                                <span className="text-[10px] text-gray-400">{item.t}</span>
+                                </div>
+                            </label>
+                            ))}
+                        </div>
                         </div>
                     </div>
-                `;
-                
-                dayEl.innerHTML = html;
-                listContainer.appendChild(dayEl);
+                    )}
 
-                fetchDayDetails(dayData);
-            });
-        }
-
-        function generateEventCard(dayId, event) {
-            let icon = '';
-            let color = 'bg-gray-100';
-            let navButton = '';
-
-            switch (event.type) {
-                case 'attraction':
-                    icon = '⛩️'; color = 'bg-red-50';
-                    break;
-                case 'food':
-                    icon = '🍜'; color = 'bg-yellow-50';
-                    break;
-                case 'transport':
-                    icon = '🚄'; color = 'bg-blue-50';
-                    break;
-                case 'accommodation':
-                    icon = '🏨'; color = 'bg-green-50';
-                    break;
-            }
-
-            // Navigation Button for self-driving convenience
-            if (event.type !== 'transport' && event.type !== 'accommodation') {
-                const mapUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(event.navTarget)}`;
-                navButton = `
-                    <a href="${mapUrl}" target="_blank" class="text-xs font-semibold py-1 px-3 rounded-full text-white ml-2 transition" style="background-color: var(--color-accent);">
-                        導航
-                    </a>
-                `;
-            } else if (event.navTarget) {
-                 const mapUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(event.navTarget)}`;
-                navButton = `
-                    <a href="${mapUrl}" target="_blank" class="text-xs font-semibold py-1 px-3 rounded-full text-gray-700 border border-gray-300 ml-2 transition">
-                        地點
-                    </a>
-                `;
-            }
-
-            return `
-                <div class="${color} p-3 rounded-lg border border-gray-100 flex items-start">
-                    <div class="flex-shrink-0 text-lg mr-3">${icon}</div>
-                    <div class="flex-grow">
-                        <div class="flex justify-between items-center mb-1">
-                            <p class="text-sm font-semibold">${event.time} | ${event.title}</p>
-                            ${navButton}
+                    {/* TAB: EXPENSES */}
+                    {activeTab === 'expenses' && (
+                    <div className="space-y-4 animate-fade-in pb-20">
+                        <div className="bg-gradient-to-r from-teal-500 to-emerald-500 p-6 rounded-[24px] shadow-lg text-white relative overflow-hidden">
+                        <div className="relative z-10">
+                            <h3 className="text-xs font-medium opacity-90 mb-1">目前總支出 (JPY)</h3>
+                            <p className="text-4xl font-bold tracking-tight">¥ {totalCost.toLocaleString()}</p>
+                            <div className="mt-4 flex gap-2 text-[10px] font-bold opacity-80">
+                            <span className="bg-white/20 px-2.5 py-1 rounded-lg backdrop-blur">
+                                ≈ TWD {Math.round(totalCost * 0.22).toLocaleString()}
+                            </span>
+                            <span className="bg-white/20 px-2.5 py-1 rounded-lg backdrop-blur">
+                                {expenses.length} 筆項目
+                            </span>
+                            </div>
                         </div>
-                        <p class="text-xs text-gray-600">${event.detail}</p>
+                        <Wallet className="absolute -right-4 -bottom-4 text-white/10 w-32 h-32 rotate-12" />
+                        </div>
+
+                        {/* Input */}
+                        <div className="bg-white p-4 rounded-[20px] shadow-sm border border-gray-100">
+                        <h4 className="font-bold text-gray-700 mb-3 text-sm flex items-center gap-2">
+                            <Plus size={16} className="bg-teal-100 text-teal-600 rounded-full p-0.5"/> 新增一筆
+                        </h4>
+                        <form onSubmit={handleAddExpense} className="space-y-3">
+                            <div className="flex gap-2">
+                            <input 
+                                type="text" 
+                                placeholder="品項 (如: 晚餐)" 
+                                className="flex-1 bg-gray-50 border border-gray-100 rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-teal-500 outline-none transition-all"
+                                value={newExpense.item}
+                                onChange={(e) => setNewExpense({...newExpense, item: e.target.value})}
+                            />
+                            <input 
+                                type="number" 
+                                placeholder="¥ 金額" 
+                                className="w-24 bg-gray-50 border border-gray-100 rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-teal-500 outline-none transition-all"
+                                value={newExpense.cost}
+                                onChange={(e) => setNewExpense({...newExpense, cost: e.target.value})}
+                            />
+                            </div>
+                            <div className="flex gap-2">
+                            <select 
+                                className="bg-gray-50 border border-gray-100 rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-teal-500 outline-none text-gray-600 flex-1"
+                                value={newExpense.payer}
+                                onChange={(e) => setNewExpense({...newExpense, payer: e.target.value})}
+                            >
+                                <option value="我">我先付</option>
+                                <option value="公費">公費支出</option>
+                                <option value="刷卡">信用卡</option>
+                            </select>
+                            <button type="submit" className="flex-[2] bg-teal-500 text-white rounded-xl font-bold py-2.5 text-sm hover:bg-teal-600 active:scale-95 transition-all shadow-md shadow-teal-200">
+                                記帳
+                            </button>
+                            </div>
+                        </form>
+                        </div>
+
+                        {/* History List */}
+                        <div className="space-y-2.5">
+                        {expenses.length === 0 ? (
+                            <div className="text-center text-gray-400 py-10 flex flex-col items-center gap-2">
+                            <Coffee size={32} className="opacity-20"/>
+                            <span className="text-sm">還沒有紀錄，開始你的第一筆消費吧！</span>
+                            </div>
+                        ) : (
+                            expenses.map((ex) => (
+                            <div key={ex.id} className="bg-white p-3.5 rounded-2xl flex justify-between items-center shadow-sm border border-gray-50 group">
+                                <div className="flex flex-col">
+                                <span className="font-bold text-gray-800 text-sm">{ex.item}</span>
+                                <span className="text-[10px] text-gray-400 mt-0.5 flex items-center gap-1">
+                                    <span className={`w-1.5 h-1.5 rounded-full ${ex.payer === '公費' ? 'bg-orange-400' : 'bg-blue-400'}`}></span>
+                                    {ex.payer}
+                                </span>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                <span className="font-bold text-teal-600 font-mono">¥{Number(ex.cost).toLocaleString()}</span>
+                                <button onClick={() => removeExpense(ex.id)} className="text-gray-300 hover:text-red-500 p-1 rounded-full hover:bg-red-50 transition-all">
+                                    <Trash2 size={16} />
+                                </button>
+                                </div>
+                            </div>
+                            ))
+                        )}
+                        </div>
                     </div>
+                    )}
+
                 </div>
-            `;
-        }
-        
-        async function fetchDayDetails(dayData) {
-            // 1. Fetch Weather Forecast
-            const weatherPrompt = `請用繁體中文，提供 ${dayData.date} 在 ${dayData.city} 的天氣預報和溫度範圍摘要，內容需簡潔。`;
-            const weatherSystem = "你是一個專業氣象主播，請根據搜尋結果，用一句話總結該日的天氣預報和溫度（例如：晴朗，溫度約 5°C 至 12°C）。";
-            const weatherResult = await callGeminiApi(weatherPrompt, weatherSystem);
-            
-            const weatherEl = document.getElementById(`weather-${dayData.day}`);
-            weatherEl.className = 'p-2 text-sm rounded-lg flex items-center';
 
-            if (weatherResult.text && !weatherResult.text.includes("API 查詢失敗")) {
-                weatherEl.innerHTML = `<span class="font-bold text-blue-600">☀️ ${dayData.city} 預報:</span> ${weatherResult.text}`;
-                weatherEl.style.backgroundColor = '#e0f7fa'; // Light blue success
-            } else {
-                weatherEl.innerHTML = `<span class="text-red-600">無法取得天氣資訊。</span>`;
-                weatherEl.style.backgroundColor = '#ffebee'; // Light red error
-            }
-
-            // 2. Fetch Guide Enrichment
-            const majorAttractions = dayData.events
-                .filter(e => e.type === 'attraction')
-                .map(e => e.title)
-                .join('、');
-            
-            const guidePrompt = `根據行程中的地點 (${dayData.city} / ${majorAttractions})，提供該地點的歷史故事、遊覽攻略和實用建議。請將「必吃美食」、「必買伴手禮」、「重要預約代號」等資訊用粗體或標籤明確標註出來。`;
-            const guideSystem = "你是一位專業的中文導遊。請用簡潔的Markdown格式，提供行程地點的深度攻略。請務必使用特定的HTML標籤進行亮顯：將所有「必吃/必點」內容包在 **<span class='highlight-food'></span>** 標籤內；將所有「伴手禮/購物」內容包在 **<span class='highlight-buy'></span>** 標籤內；將所有「預約/代號」內容包在 **<span class='highlight-reserve'></span>** 標籤內。確保您的內容易於手機閱讀。";
-            
-            const guideResult = await callGeminiApi(guidePrompt, guideSystem);
-            const guideEl = document.getElementById(`guide-content-${dayData.day}`);
-            
-            if (guideResult.text && !guideResult.text.includes("API 查詢失敗")) {
-                // The API response may contain special highlight tags based on the system prompt
-                // Replace markdown formatting with HTML (simple ones)
-                let enrichedText = guideResult.text
-                    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') // Bold
-                    .replace(/^- /gm, '• '); // List items
+                {/* Floating Bottom Nav */}
+                <nav className="fixed bottom-6 left-1/2 transform -translate-x-1/2 w-[92%] max-w-[380px] bg-white/90 backdrop-blur-md p-1.5 rounded-full shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-white/50 flex justify-between items-center z-50">
+                    <button 
+                    onClick={() => setActiveTab('itinerary')}
+                    className={`flex items-center justify-center gap-2 flex-1 py-3 rounded-full transition-all duration-300 ${activeTab === 'itinerary' ? 'bg-red-500 text-white shadow-lg' : 'text-gray-400 hover:text-red-400'}`}
+                    >
+                    <Calendar size={18} />
+                    {activeTab === 'itinerary' && <span className="text-xs font-bold animate-fade-in">行程</span>}
+                    </button>
+                    <button 
+                    onClick={() => setActiveTab('guide')}
+                    className={`flex items-center justify-center gap-2 flex-1 py-3 rounded-full transition-all duration-300 ${activeTab === 'guide' ? 'bg-orange-400 text-white shadow-lg' : 'text-gray-400 hover:text-orange-400'}`}
+                    >
+                    <Camera size={18} />
+                    {activeTab === 'guide' && <span className="text-xs font-bold animate-fade-in">指南</span>}
+                    </button>
+                    <button 
+                    onClick={() => setActiveTab('expenses')}
+                    className={`flex items-center justify-center gap-2 flex-1 py-3 rounded-full transition-all duration-300 ${activeTab === 'expenses' ? 'bg-teal-500 text-white shadow-lg' : 'text-gray-400 hover:text-teal-400'}`}
+                    >
+                    <Wallet size={18} />
+                    {activeTab === 'expenses' && <span className="text-xs font-bold animate-fade-in">記帳</span>}
+                    </button>
+                </nav>
                 
-                guideEl.innerHTML = enrichedText;
-                guideEl.classList.remove('text-gray-500');
-            } else {
-                guideEl.innerHTML = `無法取得導遊提示，請檢查網路連線。`;
-                guideEl.style.color = '#ef4444';
-            }
-        }
+                </div>
+            );
+        };
 
-        // --- BUDGET/EXPENSE TRACKING LOGIC ---
-        let expenses = JSON.parse(localStorage.getItem('travelExpenses') || '[]');
-
-        function loadExpenses() {
-            const listEl = document.getElementById('expense-list');
-            const totalEl = document.getElementById('total-expense');
-            listEl.innerHTML = '';
-            let total = 0;
-
-            if (expenses.length === 0) {
-                listEl.innerHTML = '<li class="text-gray-500">尚無支出記錄...</li>';
-                totalEl.textContent = '0';
-                return;
-            }
-
-            expenses.forEach((item, index) => {
-                const li = document.createElement('li');
-                li.className = 'flex justify-between items-center py-1 border-b border-yellow-100';
-                li.innerHTML = `
-                    <span>${item.desc} (${item.date})</span>
-                    <span class="font-bold text-yellow-800">${item.amount.toLocaleString()} JPY</span>
-                `;
-                total += item.amount;
-                listEl.appendChild(li);
-            });
-            
-            totalEl.textContent = total.toLocaleString();
-        }
-
-        function addExpense() {
-            const amountInput = document.getElementById('expense-amount');
-            const descInput = document.getElementById('expense-desc');
-
-            const amount = parseInt(amountInput.value);
-            const desc = descInput.value.trim();
-
-            if (isNaN(amount) || amount <= 0 || desc === '') {
-                alert('請輸入有效的金額和項目說明！');
-                return;
-            }
-
-            const now = new Date();
-            const dateStr = `${now.getMonth() + 1}/${now.getDate()}`;
-
-            expenses.unshift({
-                amount: amount,
-                desc: desc,
-                date: dateStr,
-                timestamp: now.getTime()
-            });
-
-            // Keep only the latest 30 expenses
-            expenses = expenses.slice(0, 30);
-            
-            localStorage.setItem('travelExpenses', JSON.stringify(expenses));
-
-            amountInput.value = '';
-            descInput.value = '';
-            loadExpenses();
-        }
-        
+        const root = createRoot(document.getElementById('root'));
+        root.render(<TripApp />);
     </script>
 </body>
 </html>
